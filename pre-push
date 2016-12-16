@@ -59,7 +59,7 @@ do
 		
 		# Add reviewers to the review
 		add_reviewers_response=`curl -i --user "$username:$password" -H "Content-Type: application/json" -X POST "$review_url/reviewers" --data "$reviewers"`
-		
+		echo >&2 "Successfully created a new Code Review for the changes. Code Review URL = $review_url"
 	fi
 done
 
