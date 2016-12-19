@@ -46,6 +46,8 @@ do
 		
 		# Get the diff from git
 		commit_diff=`git diff "$range"`
+		commit_diff='<![CDATA['"$commit_diff"']]>'
+		
 		last_commit_message=`git log --format=%f -n 1 "$range"`
 		all_commit_messages=`git log --format=%f "$range"`
 		
