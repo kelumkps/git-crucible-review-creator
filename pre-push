@@ -76,7 +76,7 @@ do
 		review_url=`echo ${location_header:9}`
 		
 		# Add reviewers to the review
-		add_reviewers_response=`curl -i --user "$username:$password" -H "Content-Type: application/json" -X POST "$review_url/reviewers" --data "$reviewers"`
+		add_reviewers_response=`curl --user "$username:$password" -H "Content-Type: application/json" -X POST "$review_url/reviewers" --data "$reviewers"`
 
 		# Send reminders to reviewers
 		recipient_data=""
@@ -86,7 +86,7 @@ do
 		done
 
 		recipient_data="${recipient_data: : -1}"
-		remind_reviewers_response=`curl -i --user "$username:$password" -X POST "$review_url/remind" --data "$recipient_data"`
+		remind_reviewers_response=`curl --user "$username:$password" -X POST "$review_url/remind" --data "$recipient_data"`
 		
 		echo >&2 "Successfully created a new Code Review for the changes. Code Review URL = $review_url"
 	fi
