@@ -44,12 +44,28 @@ do
 			range="$remote_sha..$local_sha"
 		fi
 		
-		# Get the diff from git
-		commit_diff=`git diff "$range"`
-		commit_diff='<![CDATA['"$commit_diff"']]>'
+		git_author=`git config user.name`
+
+		# Create a temp branch to extract changes of the user
+		temp_branch="temp_$remote_sha"
+		temp_branch+="_$RANDOM"
+		local_branch=`echo ${local_ref:11}`
 		
-		last_commit_message=`git log --format=%f -n 1 "$range"`
-		all_commit_messages=`git log --format=%f "$range"`
+		git_operation=`git checkout -b "$temp_branch" "$remote_sha"`
+		git_operation=`git cherry-pick $(git log --format=%H --author="$git_author" "$range")`
+
+		# Get the diff from git
+		commit_diff=`git diff "$remote_sha" "$temp_branch"`
+		echo $commit_diff > filterred_diff.txt
+		commit_diff='<![CDATA['"$commit_diff"']]>'
+
+	    # Get commit messages for the user
+		last_commit_message=`git log --author="$git_author" --format=%f -n 1 "$range"`
+		all_commit_messages=`git log --author="$git_author" --format=%f "$range"`
+
+		# Clean up temp branch
+		git_operation=`git checkout "$local_branch"`
+		git_operation=`git branch -D "$temp_branch"`
 		
 		# Call Crucible for create a new review
 		review_data='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><createReview><reviewData><allowReviewersToJoin>true</allowReviewersToJoin><author><userName>'"$username"'</userName></author><creator><userName>'"$username"'</userName></creator><description>'"$all_commit_messages"'</description><moderator><userName>'"$username"'</userName></moderator><name>'"$last_commit_message"'</name><projectKey>'"$project_key"'</projectKey><state>Review</state><summary>'"$last_commit_message"'</summary><type>REVIEW</type></reviewData><patch>'"$commit_diff"'</patch></createReview>'
@@ -61,6 +77,17 @@ do
 		
 		# Add reviewers to the review
 		add_reviewers_response=`curl -i --user "$username:$password" -H "Content-Type: application/json" -X POST "$review_url/reviewers" --data "$reviewers"`
+
+		# Send reminders to reviewers
+		recipient_data=""
+		IFS=',' read -ra splits <<< "$reviewers"
+		for i in "${splits[@]}"; do
+			recipient_data+="recipients=$i&"
+		done
+
+		recipient_data="${recipient_data: : -1}"
+		remind_reviewers_response=`curl -i --user "$username:$password" -X POST "$review_url/remind" --data "$recipient_data"`
+		
 		echo >&2 "Successfully created a new Code Review for the changes. Code Review URL = $review_url"
 	fi
 done
