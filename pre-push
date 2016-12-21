@@ -50,7 +50,7 @@ do
 
 			range="$parent_branch..$local_branch"
 			# Get the diff from git
-			commit_diff=`git diff "$range"`
+			commit_diff=`git diff -U1000 "$range"`
 
 		else
 			# Update to existing branch, examine new commits
@@ -64,7 +64,7 @@ do
 			git_operation=`git cherry-pick $(git log --format=%H --author="$git_author" "$range")`
 
 			# Get the diff from git
-			commit_diff=`git diff "$remote_sha" "$temp_branch"`
+			commit_diff=`git diff -U1000 "$remote_sha" "$temp_branch"`
 
 			# Clean up temp branch
 			git_operation=`git checkout "$local_branch"`
