@@ -30,6 +30,10 @@ z40=0000000000000000000000000000000000000000
 
 while read local_ref local_sha remote_ref remote_sha
 do
+	# Find local branch name and git user
+	local_branch=`echo ${local_ref:11}`
+	git_author=`git config user.name`
+
 	if [ "$local_sha" = $z40 ]
 	then
 		# Handle delete
@@ -38,34 +42,41 @@ do
 		if [ "$remote_sha" = $z40 ]
 		then
 			# New branch, examine all commits
-			range="$local_sha"
+
+			# Find the parent branch
+			vbc_col=$(( $(git show-branch | grep '^[^\[]*\*' | head -1 | cut -d* -f1 | wc -c) - 1 ))
+			swimming_lane_start_row=$(( $(git show-branch | grep -n "^[\-]*$" | cut -d: -f1) + 1 ))
+			parent_branch=`git show-branch | tail -n +$swimming_lane_start_row | grep -v "^[^\[]*\[$local_branch" | grep "^.\{$vbc_col\}[^ ]" | head -n1 | sed 's/.*\[\(.*\)\].*/\1/' | sed 's/[\^~].*//'`
+
+			range="$parent_branch..$local_branch"
+			# Get the diff from git
+			commit_diff=`git diff "$range"`
+
 		else
 			# Update to existing branch, examine new commits
 			range="$remote_sha..$local_sha"
+
+			# Create a temp branch to extract changes of the user
+			temp_branch="temp_$remote_sha"
+			temp_branch+="_$RANDOM"
+		
+			git_operation=`git checkout -b "$temp_branch" "$remote_sha"`
+			git_operation=`git cherry-pick $(git log --format=%H --author="$git_author" "$range")`
+
+			# Get the diff from git
+			commit_diff=`git diff "$remote_sha" "$temp_branch"`
+
+			# Clean up temp branch
+			git_operation=`git checkout "$local_branch"`
+			git_operation=`git branch -D "$temp_branch"`
+
 		fi
-		
-		git_author=`git config user.name`
 
-		# Create a temp branch to extract changes of the user
-		temp_branch="temp_$remote_sha"
-		temp_branch+="_$RANDOM"
-		local_branch=`echo ${local_ref:11}`
-		
-		git_operation=`git checkout -b "$temp_branch" "$remote_sha"`
-		git_operation=`git cherry-pick $(git log --format=%H --author="$git_author" "$range")`
-
-		# Get the diff from git
-		commit_diff=`git diff "$remote_sha" "$temp_branch"`
-		echo $commit_diff > filterred_diff.txt
 		commit_diff='<![CDATA['"$commit_diff"']]>'
 
 	    # Get commit messages for the user
 		last_commit_message=`git log --author="$git_author" --format=%f -n 1 "$range"`
 		all_commit_messages=`git log --author="$git_author" --format=%f "$range"`
-
-		# Clean up temp branch
-		git_operation=`git checkout "$local_branch"`
-		git_operation=`git branch -D "$temp_branch"`
 		
 		# Call Crucible for create a new review
 		review_data='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><createReview><reviewData><allowReviewersToJoin>true</allowReviewersToJoin><author><userName>'"$username"'</userName></author><creator><userName>'"$username"'</userName></creator><description>'"$all_commit_messages"'</description><moderator><userName>'"$username"'</userName></moderator><name>'"$last_commit_message"'</name><projectKey>'"$project_key"'</projectKey><state>Review</state><summary>'"$last_commit_message"'</summary><type>REVIEW</type></reviewData><patch>'"$commit_diff"'</patch></createReview>'
