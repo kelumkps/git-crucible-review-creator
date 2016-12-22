@@ -17,11 +17,11 @@
 #   <local ref> <local sha1> <remote ref> <remote sha1>
 #
 
-crucible_url="#HOST:PORT"
-project_key="#PROJECT_KEY"
-username="#USERNAME"
-password="#PASSWORD"
-reviewers="#COMMA_SEPERATED_USERNAMES"
+crucible_url="#HOST_PORT#"
+project_key="#PROJECT_KEY#"
+username="#USERNAME#"
+password="#PASSWORD#"
+reviewers="#COMMA_SEPERATED_USERNAMES#"
 
 remote="$1"
 url="$2"
@@ -33,7 +33,10 @@ do
 	# Find local branch name and git user
 	local_branch=`echo ${local_ref:11}`
 	git_author=`git config user.name`
-
+	
+	# Decode the password
+	password=`echo $password | base64 --decode`
+	
 	if [ "$local_sha" = $z40 ]
 	then
 		# Handle delete
@@ -86,18 +89,22 @@ do
 		location_header=`echo "$create_review_response" | grep Location:`
 		review_url=`echo ${location_header:9}`
 		
-		# Add reviewers to the review
-		add_reviewers_response=`curl --user "$username:$password" -H "Content-Type: application/json" -X POST "$review_url/reviewers" --data "$reviewers"`
+		if [ ! -z "${reviewers// }" ] 
+		then
+			# Add reviewers to the review
+			add_reviewers_response=`curl --user "$username:$password" -H "Content-Type: application/json" -X POST "$review_url/reviewers" --data "$reviewers"`
 
-		# Send reminders to reviewers
-		recipient_data=""
-		IFS=',' read -ra splits <<< "$reviewers"
-		for i in "${splits[@]}"; do
-			recipient_data+="recipients=$i&"
-		done
+			# Send reminders to reviewers
+			recipient_data=""
+			IFS=',' read -ra splits <<< "$reviewers"
+			for i in "${splits[@]}"; do
+				recipient_data+="recipients=$i&"
+			done
 
-		recipient_data="${recipient_data: : -1}"
-		remind_reviewers_response=`curl --user "$username:$password" -X POST "$review_url/remind" --data "$recipient_data"`
+			recipient_data="${recipient_data: : -1}"
+			remind_reviewers_response=`curl --user "$username:$password" -X POST "$review_url/remind" --data "$recipient_data"`
+		
+		fi		
 		
 		echo >&2 "Successfully created a new Code Review for the changes. Code Review URL = $review_url"
 	fi
