@@ -20,7 +20,7 @@
 crucible_url="#HOST_PORT#"
 project_key="#PROJECT_KEY#"
 username="#USERNAME#"
-password="#PASSWORD#"
+password_base64="#PASSWORD_IN_BASE64#"
 reviewers="#COMMA_SEPERATED_USERNAMES#"
 
 remote="$1"
@@ -35,7 +35,7 @@ do
 	git_author=`git config user.name`
 	
 	# Decode the password
-	password=`echo $password | base64 --decode`
+	password=`echo $password_base64 | base64 --decode`
 	
 	if [ "$local_sha" = $z40 ]
 	then
