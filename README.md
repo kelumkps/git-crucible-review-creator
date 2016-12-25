@@ -10,7 +10,7 @@ This script should be placed on `.git/hooks` directory of the project. Once `git
 #### Automated Installation
 It is highly recommended to use the siblings project [git-crucible-cli - The Interactive command-line tool for "git-crucible-review-creator"](https://github.com/kelumkps/git-crucible-cli) to install and manage the pre-push script. git-crucible-cli is a hassle free way to download the latest stable release from Github, apply configurations and install the "git-crucible-review-creator" on any git project.
 
-Please refer git-crucible-cli available on npm for detailed instructions.
+Please refer [git-crucible](https://www.npmjs.com/package/git-crucible) available on [npm](https://www.npmjs.com/package/git-crucible) for detailed instructions.
 
 #### Manual Installation
 1. Download the `git-crucible-review-creator` from latest stable release on Github.
