@@ -75,38 +75,41 @@ do
 
 		fi
 
-		commit_diff='<![CDATA['"$commit_diff"']]>'
-
-	    # Get commit messages for the user
-		last_commit_message=`git log --author="$git_author" --format=%f -n 1 "$range"`
-		all_commit_messages=`git log --author="$git_author" --format=%f "$range"`
-		
-		# Call Crucible for create a new review
-		review_data='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><createReview><reviewData><allowReviewersToJoin>true</allowReviewersToJoin><author><userName>'"$username"'</userName></author><creator><userName>'"$username"'</userName></creator><description>'"$all_commit_messages"'</description><moderator><userName>'"$username"'</userName></moderator><name>'"$last_commit_message"'</name><projectKey>'"$project_key"'</projectKey><state>Review</state><summary>'"$last_commit_message"'</summary><type>REVIEW</type></reviewData><patch>'"$commit_diff"'</patch></createReview>'
-		create_review_response=`curl -i --user "$username:$password" -H "Content-Type: application/xml" -X POST --data "$review_data" "$crucible_url/rest-service/reviews-v1"`
-		
-		# Extract location of the review from response
-		location_header=`echo "$create_review_response" | grep Location:`
-		review_url=`echo ${location_header:9}`
-		
-		if [ ! -z "${reviewers// }" ] 
+		if [ ! -z "${commit_diff// }" ] 
 		then
-			# Add reviewers to the review
-			add_reviewers_response=`curl --user "$username:$password" -H "Content-Type: application/json" -X POST "$review_url/reviewers" --data "$reviewers"`
+			commit_diff='<![CDATA['"$commit_diff"']]>'
 
-			# Send reminders to reviewers
-			recipient_data=""
-			IFS=',' read -ra splits <<< "$reviewers"
-			for i in "${splits[@]}"; do
-				recipient_data+="recipients=$i&"
-			done
+			# Get commit messages for the user
+			last_commit_message=`git log --author="$git_author" --format=%f -n 1 "$range"`
+			all_commit_messages=`git log --author="$git_author" --format=%f "$range"`
+			
+			# Call Crucible for create a new review
+			review_data='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><createReview><reviewData><allowReviewersToJoin>true</allowReviewersToJoin><author><userName>'"$username"'</userName></author><creator><userName>'"$username"'</userName></creator><description>'"$all_commit_messages"'</description><moderator><userName>'"$username"'</userName></moderator><name>'"$last_commit_message"'</name><projectKey>'"$project_key"'</projectKey><state>Review</state><summary>'"$last_commit_message"'</summary><type>REVIEW</type></reviewData><patch>'"$commit_diff"'</patch></createReview>'
+			create_review_response=`curl -i --user "$username:$password" -H "Content-Type: application/xml" -X POST --data "$review_data" "$crucible_url/rest-service/reviews-v1"`
+			
+			# Extract location of the review from response
+			location_header=`echo "$create_review_response" | grep Location:`
+			review_url=`echo ${location_header:9}`
+			
+			if [ ! -z "${reviewers// }" ] 
+			then
+				# Add reviewers to the review
+				add_reviewers_response=`curl --user "$username:$password" -H "Content-Type: application/json" -X POST "$review_url/reviewers" --data "$reviewers"`
 
-			recipient_data="${recipient_data: : -1}"
-			remind_reviewers_response=`curl --user "$username:$password" -X POST "$review_url/remind" --data "$recipient_data"`
-		
-		fi		
-		
-		echo >&2 "Successfully created a new Code Review for the changes. Code Review URL = $review_url"
+				# Send reminders to reviewers
+				recipient_data=""
+				IFS=',' read -ra splits <<< "$reviewers"
+				for i in "${splits[@]}"; do
+					recipient_data+="recipients=$i&"
+				done
+
+				recipient_data="${recipient_data: : -1}"
+				remind_reviewers_response=`curl --user "$username:$password" -X POST "$review_url/remind" --data "$recipient_data"`
+			
+			fi		
+			
+			echo >&2 "Successfully created a new Code Review for the changes. Code Review URL = $review_url"
+		fi
 	fi
 done
 
